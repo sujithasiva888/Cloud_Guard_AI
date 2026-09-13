@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CloudGuard AI Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .container { display: flex; gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex: 1; }
+        textarea { width: 100%; height: 250px; font-family: monospace; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: none; }
+        button { background-color: #ff9900; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
+        button:hover { background-color: #e68a00; }
+        .metric-card { background: #f8f9fa; padding: 15px; border-left: 5px solid #0073bb; margin-bottom: 10px; border-radius: 4px; }
+        .alert-box { padding: 15px; border-radius: 4px; font-weight: bold; margin-bottom: 10px; }
+        .safe { background-color: #d4edda; color: #155724; }
+        .danger { background-color: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
+        .footer-panel { background: white; padding: 20px; border-radius: 8px; margin-top: 20px; max-width: 1200px; margin-left: auto; margin-right: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .path { font-family: monospace; background: #e9ecef; padding: 10px; border-radius: 4px; color: #495057; }
+    </style>
+</head>
+<body>
+    <h2 style="text-align: center; color: #232f3e;">CloudGuard AI Dashboard</h2>
+    <div class="container">
+        <div class="panel">
+            <h3>Code Deployment Console</h3>
+            <textarea id="codeArea" placeholder="// Paste your AWS Lambda or application code here...&#10;// Try typing an infinite loop to test:&#10;// while True: print('Run')"></textarea>
+            <button onclick="runCloudGuard()">Deploy & Run Application</button>
+        </div>
+        <div class="panel">
+            <h3>Live System Metrics</h3>
+            <div id="alertOutput" class="alert-box safe">System Status: Ready to Scan</div>
+            <div class="metric-card">
+                <strong>Active Cost Tracker:</strong>
+                <span id="costOutput" style="font-size: 20px; float: right; color: #232f3e;">₹0.00</span>
+            </div>
+            <div class="metric-card">
+                <strong>Circuit Breaker State:</strong>
+                <span id="circuitOutput" style="font-weight: bold; float: right; color: #6c757d;">INACTIVE</span>
+            </div>
+        </div>
+    </div>
+    <div class="footer-panel">
+        <h3>System Pipeline Routing Logs</h3>
+        <p><strong>Active Processing Path:</strong></p>
+        <div id="pathOutput" class="path">Awaiting deployment execution...</div>
+        <br>
+        <p><strong>System Response State:</strong> <span id="statusOutput" style="font-weight: bold; color: #0073bb;">IDLE</span></p>
+    </div>
+    <script>
+        async function runCloudGuard() {
+            const codeInput = document.getElementById('codeArea').value;
+            document.getElementById('statusOutput').innerText = "PROCESSING...";
+            const response = await fetch('/api/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: codeInput })
+            });
+            const data = await response.json();
+            document.getElementById('costOutput').innerText = "₹" + data.estimated_cost;
+            document.getElementById('pathOutput').innerText = data.routing_path;
+            document.getElementById('statusOutput').innerText = data.status;
+            const alertDiv = document.getElementById('alertOutput');
+            if(data.security_alert !== "SAFE") {
+                alertDiv.innerText = data.security_alert;
+                alertDiv.className = "alert-box danger";
+            } else {
+                alertDiv.innerText = "Security Status: Passed AI Analysis";
+                alertDiv.className = "alert-box safe";
+            }
+            const circuitSpan = document.getElementById('circuitOutput');
+            if(data.circuit_breaker) {
+                circuitSpan.innerText = "TRIGGERED (HALTED)";
+                circuitSpan.style.color = "#dc3545";
+            } else {
+                circuitSpan.innerText = "CLEARED";
+                circuitSpan.style.color = "#28a745";
+            }
+        }
+    </script>
+</body>
+</html>
