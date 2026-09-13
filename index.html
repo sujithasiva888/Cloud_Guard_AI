@@ -2,80 +2,158 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CloudGuard AI Dashboard</title>
+    <title>CloudGuard AI - Corporate Portal</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
-        .container { display: flex; gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex: 1; }
-        textarea { width: 100%; height: 250px; font-family: monospace; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: none; }
-        button { background-color: #ff9900; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
+        :root { --aws-squid-ink: #232f3e; --aws-smile: #ff9900; --aws-blue: #0073bb; --bg-gray: #f4f6f9; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-gray); margin: 0; padding: 0; }
+        #authContainer { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 4px solid var(--aws-smile); }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 5px; color: var(--aws-squid-ink); }
+        .input-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        #appContainer { display: none; padding: 20px; max-width: 1300px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: var(--aws-squid-ink); color: white; padding: 15px 25px; border-radius: 8px; margin-bottom: 20px; }
+        .workspace { display: flex; gap: 20px; }
+        .panel { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex: 1; }
+        #devView, #testerView { display: none; }
+        textarea { width: 100%; height: 220px; font-family: 'Courier New', monospace; padding: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: none; background: #fafafa; }
+        select { width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ccc; }
+        button { background-color: var(--aws-smile); color: var(--aws-squid-ink); border: none; padding: 12px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
         button:hover { background-color: #e68a00; }
-        .metric-card { background: #f8f9fa; padding: 15px; border-left: 5px solid #0073bb; margin-bottom: 10px; border-radius: 4px; }
-        .alert-box { padding: 15px; border-radius: 4px; font-weight: bold; margin-bottom: 10px; }
-        .safe { background-color: #d4edda; color: #155724; }
+        .btn-test { background-color: #cc0000; color: white; margin-bottom: 10px; }
+        .btn-test:hover { background-color: #990000; }
+        .metric-card { background: #f8f9fa; padding: 15px; border-left: 5px solid var(--aws-blue); margin-bottom: 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .metric-card span { font-size: 18px; font-weight: bold; color: var(--aws-squid-ink); }
+        .alert-box { padding: 15px; border-radius: 4px; font-weight: bold; margin-bottom: 15px; text-align: center; }
+        .safe { background-color: #d4edda; color: #155724; border-left: 5px solid #28a745; }
         .danger { background-color: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
-        .footer-panel { background: white; padding: 20px; border-radius: 8px; margin-top: 20px; max-width: 1200px; margin-left: auto; margin-right: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .path { font-family: monospace; background: #e9ecef; padding: 10px; border-radius: 4px; color: #495057; }
+        .footer-panel { background: white; padding: 20px; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .path { font-family: monospace; background: #e9ecef; padding: 12px; border-radius: 4px; color: #495057; font-size: 14px; line-height: 1.5; }
     </style>
 </head>
 <body>
-    <h2 style="text-align: center; color: #232f3e;">CloudGuard AI Dashboard</h2>
-    <div class="container">
-        <div class="panel">
-            <h3>Code Deployment Console</h3>
-            <textarea id="codeArea" placeholder="// Paste your AWS Lambda or application code here...&#10;// Try typing an infinite loop to test:&#10;// while True: print('Run')"></textarea>
-            <button onclick="runCloudGuard()">Deploy & Run Application</button>
+
+    <div id="authContainer">
+        <h2 style="text-align: center; margin-top: 0; color: var(--aws-squid-ink);">CloudGuard Sign-In</h2>
+        <p style="font-size: 13px; color: #666; text-align: center;">Demo Accounts:<br><b>dev_user</b> (devpassword) | <b>test_user</b> (testpassword)</p>
+        <div id="loginError" style="color: red; font-size: 14px; text-align: center; margin-bottom: 10px;"></div>
+        <div class="input-group">
+            <label>IAM Corporate Username</label>
+            <input type="text" id="username" placeholder="e.g., dev_user">
         </div>
-        <div class="panel">
-            <h3>Live System Metrics</h3>
-            <div id="alertOutput" class="alert-box safe">System Status: Ready to Scan</div>
-            <div class="metric-card">
-                <strong>Active Cost Tracker:</strong>
-                <span id="costOutput" style="font-size: 20px; float: right; color: #232f3e;">₹0.00</span>
+        <div class="input-group">
+            <label>Access Password</label>
+            <input type="password" id="password" placeholder="••••••••">
+        </div>
+        <button onclick="executeLogin()">Authenticate Portal Access</button>
+    </div>
+
+    <div id="appContainer">
+        <div class="header">
+            <h2 style="margin: 0; font-size: 22px; letter-spacing: 0.5px;">CloudGuard AI Governance Engine</h2>
+            <div>
+                <span id="userBadge" style="background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 4px; margin-right: 15px; font-size: 14px;"></span>
+                <button onclick="logout()" style="width: auto; padding: 6px 12px; font-size: 13px; background: #e0e0e0; color: #333;">Sign Out</button>
             </div>
-            <div class="metric-card">
-                <strong>Circuit Breaker State:</strong>
-                <span id="circuitOutput" style="font-weight: bold; float: right; color: #6c757d;">INACTIVE</span>
+        </div>
+
+        <div class="workspace">
+            <div class="panel">
+                <div id="devView">
+                    <h3>Developer Console: Application Pipeline</h3>
+                    <label style="font-weight: bold; display:block; margin-bottom: 5px;">Target Cloud Server Instance</label>
+                    <select id="serverType">
+                        <option value="t2.micro (Low-Cost Sandbox)">t2.micro (Low-Cost Sandbox Base Rate)</option>
+                        <option value="m5.large (Standard Compute)">m5.large (Standard Production Rate)</option>
+                        <option value="g4dn.xlarge (Heavy AI Cluster)">g4dn.xlarge (Premium Hardware Cluster)</option>
+                    </select>
+                    <label style="font-weight: bold; display:block; margin-bottom: 5px;">Serverless Execution Script</label>
+                    <textarea id="devCode" placeholder="// Type clean cloud infrastructure logic here..."></textarea>
+                    <button onclick="submitPipeline(document.getElementById('devCode').value, document.getElementById('serverType').value)">Deploy Production Pipeline</button>
+                </div>
+
+                <div id="testerView">
+                    <h3>Vulnerability Assessment Suite (QA Testing)</h3>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Select a simulated risk configuration template below to benchmark the automated circuit breaker governance telemetry layer.</p>
+                    <button class="btn-test" onclick="runSimulation('loop')">Inject Runaway Infinite Loop Vulnerability</button>
+                    <button class="btn-test" onclick="runSimulation('leak')">Inject Exposed Hardcoded AWS Access Token</button>
+                    <button class="btn-test" onclick="runSimulation('clean')">Inject Optimized Production Execution Block</button>
+                </div>
             </div>
+
+            <div class="panel">
+                <h3>Live Sandbox Performance Metrics</h3>
+                <div id="alertBox" class="alert-box safe">System State: Active Monitoring Matrix Clear</div>
+                
+                <div class="metric-card">
+                    <div><strong>Simulated Compute Footprint Accumulation:</strong></div>
+                    <div><span id="costMetric">₹0.00</span></div>
+                </div>
+                
+                <div class="metric-card">
+                    <div><strong>Active Guard Circuit Breaker Status:</strong></div>
+                    <div><span id="breakerMetric" style="color: #6c757d;">STANDBY</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-panel">
+            <h3>Infrastructure Signal Pipeline Routing Trace</h3>
+            <p><strong>Active Runtime Execution Path Way:</strong></p>
+            <div id="pathLog" class="path">Awaiting credential verification pipeline access keys...</div>
+            <br>
+            <p><strong>System State Flag:</strong> <span id="stateFlag" style="font-weight: bold; color: var(--aws-blue);">IDLE</span></p>
         </div>
     </div>
-    <div class="footer-panel">
-        <h3>System Pipeline Routing Logs</h3>
-        <p><strong>Active Processing Path:</strong></p>
-        <div id="pathOutput" class="path">Awaiting deployment execution...</div>
-        <br>
-        <p><strong>System Response State:</strong> <span id="statusOutput" style="font-weight: bold; color: #0073bb;">IDLE</span></p>
-    </div>
+
     <script>
-        async function runCloudGuard() {
-            const codeInput = document.getElementById('codeArea').value;
-            document.getElementById('statusOutput').innerText = "PROCESSING...";
-            const response = await fetch('/api/scan', {
+        let currentAuthToken = "";
+        let currentAuthenticatedRole = "";
+
+        async function executeLogin() {
+            const userIn = document.getElementById('username').value;
+            const passIn = document.getElementById('password').value;
+            const errDiv = document.getElementById('loginError');
+
+            const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: codeInput })
+                body: JSON.stringify({ username: userIn, password: passIn })
             });
-            const data = await response.json();
-            document.getElementById('costOutput').innerText = "₹" + data.estimated_cost;
-            document.getElementById('pathOutput').innerText = data.routing_path;
-            document.getElementById('statusOutput').innerText = data.status;
-            const alertDiv = document.getElementById('alertOutput');
-            if(data.security_alert !== "SAFE") {
-                alertDiv.innerText = data.security_alert;
-                alertDiv.className = "alert-box danger";
+
+            if (response.status === 200) {
+                const data = await response.json();
+                currentAuthToken = data.token;
+                currentAuthenticatedRole = data.role;
+                
+                errDiv.innerText = "";
+                document.getElementById('authContainer').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+                document.getElementById('userBadge').innerText = "IAM_ROLE: " + currentAuthenticatedRole.toUpperCase();
+
+                if (currentAuthenticatedRole === 'developer') {
+                    document.getElementById('devView').style.display = 'block';
+                    document.getElementById('testerView').style.display = 'none';
+                } else {
+                    document.getElementById('devView').style.display = 'none';
+                    document.getElementById('testerView').style.display = 'block';
+                }
             } else {
-                alertDiv.innerText = "Security Status: Passed AI Analysis";
-                alertDiv.className = "alert-box safe";
-            }
-            const circuitSpan = document.getElementById('circuitOutput');
-            if(data.circuit_breaker) {
-                circuitSpan.innerText = "TRIGGERED (HALTED)";
-                circuitSpan.style.color = "#dc3545";
-            } else {
-                circuitSpan.innerText = "CLEARED";
-                circuitSpan.style.color = "#28a745";
+                errDiv.innerText = "Invalid Credentials. Access Denied.";
             }
         }
-    </script>
-</body>
-</html>
+
+        function runSimulation(type) {
+            if (type === 'loop') {
+                submitPipeline("while True:\\n    print('Loop')", "g4dn.xlarge (Heavy AI Cluster)");
+            } else if (type === 'leak') {
+                submitPipeline("AWS_ACCESS_KEY_ID = 'AKIAIOSFODNN7EXAMPLE'", "t2.micro (Low-Cost Sandbox)");
+            } else {
+                submitPipeline("def handler(event, context): return True", "t2.micro (Low-Cost Sandbox)");
+            }
+        }
+
+        async function submitPipeline(codePayload, serverSpec) {
+            document.getElementById('stateFlag').innerText = "EVALUATING PIPELINE...";
+            
+            const response = await fetch('/api/scan', {
+                method: 'POST',

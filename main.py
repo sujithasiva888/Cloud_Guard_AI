@@ -1,137 +1,87 @@
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+import os
 import random
 import time
+from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
-app = FastAPI(title="CloudGuard AI")
+app = FastAPI(title="CloudGuard AI - Enterprise")
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
 
 class CodeSubmission(BaseModel):
     code: str
+    server_type: str
 
-# HTML UI injected directly to prevent folder matching path errors
-html_content = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>CloudGuard AI Dashboard</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
-        .container { display: flex; gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex: 1; }
-        textarea { width: 100%; height: 250px; font-family: monospace; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; resize: none; }
-        button { background-color: #ff9900; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
-        button:hover { background-color: #e68a00; }
-        .metric-card { background: #f8f9fa; padding: 15px; border-left: 5px solid #0073bb; margin-bottom: 10px; border-radius: 4px; }
-        .alert-box { padding: 15px; border-radius: 4px; font-weight: bold; margin-bottom: 10px; }
-        .safe { background-color: #d4edda; color: #155724; }
-        .danger { background-color: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
-        .footer-panel { background: white; padding: 20px; border-radius: 8px; margin-top: 20px; max-width: 1200px; margin-left: auto; margin-right: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .path { font-family: monospace; background: #e9ecef; padding: 10px; border-radius: 4px; color: #495057; }
-    </style>
-</head>
-<body>
-    <h2 style="text-align: center; color: #232f3e;">CloudGuard AI Dashboard</h2>
-    <div class="container">
-        <div class="panel">
-            <h3>Code Deployment Console</h3>
-            <textarea id="codeArea" placeholder="// Paste your AWS Lambda or application code here...&#10;// Try typing an infinite loop to test:&#10;// while True: print('Run')"></textarea>
-            <button onclick="runCloudGuard()">Deploy & Run Application</button>
-        </div>
-        <div class="panel">
-            <h3>Live System Metrics</h3>
-            <div id="alertOutput" class="alert-box safe">System Status: Ready to Scan</div>
-            <div class="metric-card">
-                <strong>Active Cost Tracker:</strong>
-                <span id="costOutput" style="font-size: 20px; float: right; color: #232f3e;">₹0.00</span>
-            </div>
-            <div class="metric-card">
-                <strong>Circuit Breaker State:</strong>
-                <span id="circuitOutput" style="font-weight: bold; float: right; color: #6c757d;">INACTIVE</span>
-            </div>
-        </div>
-    </div>
-    <div class="footer-panel">
-        <h3>System Pipeline Routing Logs</h3>
-        <p><strong>Active Processing Path:</strong></p>
-        <div id="pathOutput" class="path">Awaiting deployment execution...</div>
-        <br>
-        <p><strong>System Response State:</strong> <span id="statusOutput" style="font-weight: bold; color: #0073bb;">IDLE</span></p>
-    </div>
-    <script>
-        async function runCloudGuard() {
-            const codeInput = document.getElementById('codeArea').value;
-            document.getElementById('statusOutput').innerText = "PROCESSING...";
-            const response = await fetch('/api/scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: codeInput })
-            });
-            const data = await response.json();
-            document.getElementById('costOutput').innerText = "₹" + data.estimated_cost;
-            document.getElementById('pathOutput').innerText = data.routing_path;
-            document.getElementById('statusOutput').innerText = data.status;
-            const alertDiv = document.getElementById('alertOutput');
-            if(data.security_alert !== "SAFE") {
-                alertDiv.innerText = data.security_alert;
-                alertDiv.className = "alert-box danger";
-            } else {
-                alertDiv.innerText = "Security Status: Passed AI Analysis";
-                alertDiv.className = "alert-box safe";
-            }
-            const circuitSpan = document.getElementById('circuitOutput');
-            if(data.circuit_breaker) {
-                circuitSpan.innerText = "TRIGGERED (HALTED)";
-                circuitSpan.style.color = "#dc3545";
-            } else {
-                circuitSpan.innerText = "CLEARED";
-                circuitSpan.style.color = "#28a745";
-            }
-        }
-    </script>
-</body>
-</html>
-"""
+# IAM User Accounts Mapping Database
+VALID_CREDENTIALS = {
+    "dev_user": {"password": "devpassword", "role": "developer"},
+    "test_user": {"password": "testpassword", "role": "tester"}
+}
+
+SERVER_RATES = {
+    "t2.micro (Low-Cost Sandbox)": 1.25,
+    "m5.large (Standard Compute)": 12.50,
+    "g4dn.xlarge (Heavy AI Cluster)": 48.00
+}
 
 @app.get("/", response_class=HTMLResponse)
-async def get_dashboard():
-    return html_content
+async def serve_portal():
+    # Fixed absolute path routing to look inside your templates folder automatically
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(current_dir, "templates", "index.html")
+    
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.post("/api/login")
+async def process_auth_routing(user: UserLogin):
+    if user.username in VALID_CREDENTIALS and VALID_CREDENTIALS[user.username]["password"] == user.password:
+        return {
+            "status": "authenticated",
+            "role": VALID_CREDENTIALS[user.username]["role"],
+            "token": f"mock_secure_token_{random.randint(1000,9999)}"
+        }
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid IAM Credentials")
 
 @app.post("/api/scan")
 async def scan_and_execute(submission: CodeSubmission):
     user_code = submission.code
-    routing_path = ["Code Received"]
+    spec = submission.server_type
     
-    routing_path.append("Amazon Bedrock Scanner Active")
+    routing_path = ["Pipeline Ingested", "Amazon Bedrock Static Analysis Active"]
+    
     has_leak = "AWS_ACCESS_KEY" in user_code or "secret" in user_code.lower()
-    has_loop = "while True" in user_code or "while(true)" in user_code
+    has_loop = "while True" in user_code or "while(true)" in user_code or "Loop" in user_code
     
     security_alert = "SAFE"
     if has_leak:
-        security_alert = "CRITICAL: Hardcoded AWS Credentials Found!"
+        security_alert = "CRITICAL BLOCK: Hardcoded Infrastructure Key Leak Detected!"
     elif has_loop:
-        security_alert = "WARNING: Potential Infinite Runtime Loop Caught."
+        security_alert = "WARNING FLAG: Destructive Infinite Processing Pattern Caught."
 
-    routing_path.append("AWS Lambda Execution Pipeline Started")
+    routing_path.append("AWS Lambda Metrics Compilation Injected")
+    base_modifier = SERVER_RATES.get(spec, 1.0)
     simulated_cost = 0.0
     circuit_breaker_triggered = False
     
     for step in range(1, 6):
         if circuit_breaker_triggered:
             break
-        time.sleep(0.1)
+        time.sleep(0.02)
         if has_loop:
-            simulated_cost += random.uniform(35.0, 48.0) 
+            simulated_cost += (random.uniform(25.0, 38.0) * base_modifier * 0.5)
         else:
-            simulated_cost += random.uniform(1.0, 3.5)
+            simulated_cost += (random.uniform(0.5, 1.8) * base_modifier * 0.1)
             
         if simulated_cost >= 100.0:
             circuit_breaker_triggered = True
-            routing_path.append("AWS Lambda Circuit Breaker Action Triggered")
+            routing_path.append("Autonomous Guard Circuit Breaker Intervention Engaged")
 
-    status = "HALTED_BY_GUARD" if circuit_breaker_triggered else "SUCCESS"
-    routing_path.append(f"Final State: {status}")
+    status = "HALTED_BY_GOVERNANCE" if circuit_breaker_triggered else "STABLE_DEPLOYMENT"
+    routing_path.append(f"State Finalized: {status}")
 
     return {
         "security_alert": security_alert,
